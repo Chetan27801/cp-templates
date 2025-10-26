@@ -1,0 +1,404 @@
+// ## Yuji snippet ##//
+
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+#define int long long
+#define ll long long
+#define ff first
+#define ss second
+#define pb push_back
+#define ppb pop_back
+#define ld long double
+#define ull unsigned long long
+#define pii pair<int, int>
+#define all(v) v.begin(), v.end()
+#define rall(v) v.rbegin(), v.rend()
+#define pll pair<ll, ll>
+#define fr(a, b, i) for (ll i = a; i < b; i++)
+#define fre(a, b, i) for (ll i = a; i <= b; i++)
+#define srt(a) sort(a.begin(), a.end())
+#define rsrt(a) sort(a.rbegin(), a.rend())
+#define rv(a) reverse(a.begin(), a.end())
+#define vi vector<int>
+#define vvi vector<vector<int>>
+#define vvll vector<vector<ll>>
+#define vl vector<long>
+#define vll vector<long long>
+#define vc vector<char>
+#define vvc vector<vector<char>>
+#define umi unordered_map<int, int>
+#define mi map<int, int>
+#define pq priority_queue<int>
+#define mpq priority_queue<int, vi, greater<int>>
+#define pqll priority_queue<ll>
+#define mpqll priority_queue<ll, vll, greater<ll>>
+#define vc vector<char>
+#define mod 1000000007
+#define INF 4e18
+#define inf 1e9
+#include <bitset>
+using namespace std;
+using namespace __gnu_pbds;
+// typedef tree<int, null_type, less_equal<int>, rb_tree_tag, tree_order_statistics_node_update> pbds;
+// find_by_order - give element at xth index
+//  order_of_key - find no of elements smaller than x
+ll dir[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+/*-------------------------factorial and modinv-------------------------*/
+//(a/b)%mod = ((a%mod)*((b^(mod-2))%mod))%mod
+
+ll fact[1000004];
+ll modinv[1000004];
+
+// finding power of something
+ll power(ll a, ll b, ll m = mod)
+{
+    ll res = 1;
+    while (b > 0)
+    {
+        if (b & 1)
+            res = (res * a) % m;
+        a = (a * a) % m;
+        b = b >> 1;
+    }
+    return res;
+    // log(x)
+}
+
+void precomp()
+{
+    modinv[0] = 1;
+    fact[0] = 1;
+    for (ll i = 1; i <= 1000000; i++)
+    {
+        fact[i] = (fact[i - 1] * i) % mod;
+        modinv[i] = power(fact[i], mod - 2);
+    }
+}
+
+// nCr calculation
+ll ncr(ll n, ll r)
+{
+    if (n < 0 || r < 0 || r > n)
+        return 0;
+
+    return (((fact[n] * modinv[r]) % mod) * modinv[n - r]) % mod;
+}
+
+/*-------------------------SIEVE AND PRIME-------------------------*/
+
+// check whether number is prime or not for first 1000004 whole numbers only
+vll prime(1);
+void sieve()
+{
+    prime.resize(1000004, 1);
+    prime[0] = prime[1] = false;
+
+    for (ll i = 2; i <= 1000004; i++)
+    {
+        for (ll j = i * i; j <= 1000004; j += i)
+        {
+            prime[j] = false;
+        }
+    }
+}
+
+// give first n prime numbers
+vll primeGenerator(ll n)
+{
+    ll *arr = new ll[n + 1]();
+    vector<ll> vect;
+    for (ll i = 2; i <= n; i++)
+        if (arr[i] == 0)
+        {
+            vect.pb(i);
+            for (ll j = 2 * i; j <= n; j += i)
+                arr[j] = 1;
+        }
+    return vect;
+}
+
+/*-------------------------LCM-------------------------*/
+
+ll lcm(ll a, ll b)
+{
+    return a / (__gcd(a, b)) * b;
+}
+
+// mod stuff starts here
+ll invmod(ll a, ll m = mod) { return power(a, m - 2, m); } // For prime mod
+
+ll MOD(ll x)
+{
+    return ((x % mod + mod) % mod);
+}
+
+ll mAdd(ll a, ll b, ll m = mod)
+{
+    a = a % m;
+    b = b % m;
+    return (((a + b) % m) + m) % m;
+}
+ll mSub(ll a, ll b, ll m = mod)
+{
+    a = a % m;
+    b = b % m;
+    return (((a - b) % m) + m) % m;
+}
+ll mMul(ll a, ll b, ll m = mod)
+{
+    a = a % m;
+    b = b % m;
+    return (((a * b) % m) + m) % m;
+}
+ll mDiv(ll a, ll b, ll m = mod)
+{
+    a = a % m;
+    b = b % m;
+    return mMul(a, invmod(b, m), m);
+}
+
+/*-------------------------DSU begin-------------------------*/
+
+class DSU
+{
+private:
+    vi parent, size, rank;
+    int components;
+
+public:
+    DSU(int n)
+    {
+        for (int i = 0; i <= n; i++)
+        {
+            parent.push_back(i);
+            size.push_back(1);
+            rank.push_back(0);
+        }
+        components = n;
+    }
+    int getPar(int node)
+    {
+        if (parent[node] == node)
+            return node;
+        return parent[node] = getPar(parent[node]);
+    }
+    void unite(int u, int v)
+    {
+        int pu = getPar(u);
+        int pv = getPar(v);
+        if (pu == pv)
+            return;
+        if (size[pu] < size[pv])
+        {
+            parent[pu] = pv;
+            size[pv] += size[pu];
+        }
+        else
+        {
+            parent[pv] = pu;
+            size[pu] += size[pv];
+        }
+        components--;
+    }
+    void uniteR(int u, int v)
+    {
+        int pu = getPar(u);
+        int pv = getPar(v);
+
+        if (pu == pv)
+            return;
+
+        if (rank[pu] > rank[pv])
+        {
+            parent[pv] = pu;
+        }
+        else if (rank[pv] > rank[pu])
+        {
+            parent[pu] = pv;
+        }
+        else
+        {
+            parent[pv] = pu;
+            rank[pu] += 1;
+        }
+        components--;
+    }
+
+    int component_size(int n)
+    {
+        int p = getPar(n);
+        return size[p];
+    }
+
+    int number_of_components()
+    {
+        return components - 1;
+    }
+    void del(int x)
+    {
+        parent[x] = x;
+        rank[x] = 0;
+    }
+};
+
+/*-------------------------DSU ends-------------------------*/
+
+/*-------------------------SOLUTION-------------------------*/
+
+vi isEularPathOrCircuit(vi &degree)
+{
+    int n = degree.size();
+    vi oddDegreeNodes;
+    for (int i = 1; i <= n; i++)
+    {
+        /*
+            if want to check for circuit use this if
+            as all the degree should be even to make it circuit
+            other wise comment this and uncomment the below if for
+            eular path
+        */
+        if (degree[i] % 2)
+        {
+            oddDegreeNodes.push_back(i);
+        }
+
+        /*
+
+        if(degree[i]!=0 || degree[i]!=2){
+            return false;
+        }
+
+        */
+    }
+
+    return oddDegreeNodes;
+}
+
+
+
+//Undirected Graph Eular Path and Circuit
+// Hierholzer's Algorithm
+
+void solve()
+{
+    cout << fixed << setprecision(25);
+    int n, m;
+    cin >> n >> m;
+    /*
+        - 1 based indexing
+        - using multiset so that removal to path is easy (detail below)
+    */
+    vector<multiset<int>> adj(n + 1);
+    /*
+        degree is the degree (both indegree and outdegree as both are same for undirected graph)
+    */
+    vi degree(n + 1, 0);
+    for (int i = 0; i < m; i++)
+    {
+        int x, y;
+        cin >> x >> y;
+        adj[x].insert(y);
+        adj[y].insert(x);
+        degree[y]++;
+        degree[x]++;
+    }
+
+    vi oddDegreeNodes = isEularPathOrCircuit(degree);
+
+    /*
+        if odd degree nodes are not 0 or 2 then it is impossible to have eular path or circuit
+
+        if odd degree nodes are 0 then it is eular circuit
+    */
+    if (oddDegreeNodes.size() != 0 && oddDegreeNodes.size() != 2)
+    {
+        cout << "IMPOSSIBLE\n";
+        return;
+    }
+
+    // Hierholzer's Algorithm
+    int startNode = 0;
+
+    if (oddDegreeNodes.size() == 2)
+    {
+        // Eular Path
+        startNode = oddDegreeNodes[0];
+    }
+    else
+    {
+        // Eular Circuit
+        startNode = 1;
+    }
+
+    // handle graph with no edges
+    if (startNode == n)
+    {
+        if (m == 0)
+        {
+            cout << "1\n";
+            return;
+        }
+        else
+        {
+            cout << "Not Eulerian Path or Circuit\n";
+            return;
+        }
+    }
+
+    // path to store the eular path or circuit
+    stack<int> st;
+    vector<int> path;
+    st.push(startNode);
+
+    while (!st.empty())
+    {
+        int u = st.top();
+
+        if (adj[u].empty())
+        {
+            // if u has no more edges to explore
+            // add u to path and pop it from stack
+            path.pb(u);
+            st.pop();
+        }
+        else
+        {
+            // if u has more edges to explore
+            // take any edge (u,v) by pushing v to stack
+            int v = *adj[u].begin();
+            st.push(v);
+
+            // remove edge (u,v) from the graph by removing it from both adj[u] and adj[v]
+            adj[u].erase(adj[u].begin());
+            adj[v].erase(adj[v].find(u));
+        }
+    }
+
+    // if path size is not equal to m+1 then it means all edges are not used
+    // hence it is impossible to have eular path or circuit
+    if (path.size() != m + 1)
+    {
+        cout << "IMPOSSIBLE\n";
+        return;
+    }
+
+    reverse(all(path));
+    for (auto &it : path)
+    {
+        cout << it << " ";
+    }
+}
+signed main()
+{
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    int t;
+    cin >> t;
+    // precomp();
+    while (t--)
+    {
+        solve();
+    }
+    return 0;
+}
