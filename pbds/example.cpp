@@ -8,7 +8,7 @@
 #define ff first
 #define ss second
 #define pb push_back
-#define ppb pop_back
+#define ppb pop_back()
 #define ld long double
 #define ull unsigned long long
 #define pii pair<int, int>
@@ -40,10 +40,56 @@
 #include <bitset>
 using namespace std;
 using namespace __gnu_pbds;
-// typedef tree<int, null_type, less_equal<int>, rb_tree_tag, tree_order_statistics_node_update> pbds;
+
+template <typename T>
+using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+
+// We use pair<int, int> to store {value, unique_index}
+template <typename T>
+using ordered_multiset = tree<pair<T, int>, null_type, less<pair<T, int>>, rb_tree_tag, tree_order_statistics_node_update>;
 // find_by_order - give element at xth index
-//  order_of_key - find no of elements smaller than x
+//  order_of_key - find no of elements strictly smaller than x
 ll dir[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+/*-------------------------hash-------------------------*/
+struct chsh
+{
+    static uint64_t splitmix64(uint64_t x)
+    {
+        x += 0x9e3779b97f4a7c15;
+        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
+        x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
+        return x ^ (x >> 31);
+    }
+
+    // 1. Base Hash for single numbers (int, long long)
+    size_t operator()(uint64_t x) const
+    {
+        static const uint64_t FIXED_RANDOM = chrono::steady_clock::now().time_since_epoch().count();
+        return splitmix64(x + FIXED_RANDOM);
+    }
+
+    // 2. Hash for pair<int, int> (Pack two 32-bit ints into one 64-bit)
+    size_t operator()(const pair<int, int> &p) const
+    {
+        // Pack into one uint64_t and use the base hash
+        uint64_t x = ((uint64_t)p.first << 32) | (unsigned int)p.second;
+        return (*this)(x);
+    }
+
+    size_t operator()(const pair<int, pair<int, int>> &p) const
+    {
+        // Step A: Hash the first integer
+        uint64_t h1 = (*this)(p.first);
+
+        // Step B: Hash the inner pair (this calls overload #2 automatically)
+        uint64_t h2 = (*this)(p.second);
+
+        // Step C: Combine the two hashes (Standard bit-mixing logic)
+        // This ensures the combination is unique and well-distributed
+        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+    }
+};
+
 /*-------------------------factorial and modinv-------------------------*/
 //(a/b)%mod = ((a%mod)*((b^(mod-2))%mod))%mod
 
@@ -94,9 +140,9 @@ void sieve()
     prime.resize(1000004, 1);
     prime[0] = prime[1] = false;
 
-    for (ll i = 2; i <= 1000004; i++)
+    for (ll i = 2; i < 1000004; i++)
     {
-        for (ll j = i * i; j <= 1000004; j += i)
+        for (ll j = i * i; j < 1000004; j += i)
         {
             prime[j] = false;
         }
@@ -240,111 +286,92 @@ public:
         parent[x] = x;
         rank[x] = 0;
     }
+    bool same(int u, int v)
+    {
+        return getPar(u) == getPar(v);
+    }
 };
 
 /*-------------------------DSU ends-------------------------*/
 
 /*-------------------------SOLUTION-------------------------*/
-/*
-    let say we are finding lca of a and b then steps are
-    1: bring them to the same leveing using lca
-    2: find parent for both a and b and move down whenever we find unequal node(parent) ( from 16 to 0) untill we got equal parent
-*/
-
-// filling the binary lifting dp/parent table (parent are store in the power of 2)
-// explanation of the code is in the dfs function is in binaryLifting.cpp template
-void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp, vi &level, int l = 0)
-{
-    // 0 => 2^0 i.e., first parent
-    dp[node][0] = par;
-
-    for (int i = 1; i <= 16; i++)
-    { // 16 can be change basically log(N) => N max depth
-        if (dp[node][i - 1] != -1)
-            dp[node][i] = dp[dp[node][i - 1]][i - 1];
-        else
-            dp[node][i] = -1;
-    }
-
-    level[node] = l;
-
-    for (auto it : adj[node])
-    {
-        if (it != par)
-        {
-            dfs(it, node, adj, dp, level, l + 1);
-        }
-    }
-}
-
-int getKpar(int node, int k, vvi &dp)
-{
-    for (int i = 16; i >= 0; i--)
-    {
-        if ((k >> i) & 1)
-        {
-            node = dp[node][i];
-            if (node == -1)
-                break;
-        }
-    }
-
-    return node;
-}
 
 void solve()
 {
     cout << fixed << setprecision(25);
-    int n;
-    cin >> n;
-    vector<vector<int>> adj(n);
-    for (int i = 0; i < n; i++)
+
+    // --- ORDERED SET EXAMPLE ---
+    cout << "--- Ordered Set ---" << endl;
+    ordered_set<int> os;
+    os.insert(5);
+    os.insert(1);
+    os.insert(10);
+    os.insert(5); // Duplicate ignored
+
+    // Elements: {1, 5, 10}
+
+    // find_by_order: What is at index 1?
+    cout << "Element at index 1: " << *os.find_by_order(1) << endl; // Output: 5
+
+    // order_of_key: How many elements < 6?
+    cout << "No. of elements < 6: " << os.order_of_key(6) << endl; // Output: 2 ({1, 5})
+
+    //-------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------
+
+    // Ordered Multiset
+    ordered_multiset<int> oms;
+    int t = 0; // "Time" counter to ensure uniqueness
+
+    // --- INSERTION ---
+    // Helper lambda to make insertion easier
+    auto insert_val = [&](int val)
     {
-        int u, v;
-        cin >> u >> v;
-        adj[u].pb(v);
-        adj[v].pb(u);
+        oms.insert({val, t++});
+    };
+
+    insert_val(5);
+    insert_val(1);
+    insert_val(5); // Duplicate 5
+    insert_val(10);
+
+    // Current State (conceptually): { {1,1}, {5,0}, {5,2}, {10,3} }
+    // Note: They are sorted primarily by value, secondarily by time.
+
+    // --- 1. SEARCHING (Rank) ---
+    // "How many elements strictly smaller than 5?"
+    // We search for {5, -1} because -1 is smaller than any valid time index (0+).
+    int strictly_smaller = oms.order_of_key({5, -1});
+    cout << "Count < 5: " << strictly_smaller << endl; // Output: 1 (only {1,1})
+
+    // --- 2. SEARCHING (Index) ---
+    // "What is the 2nd smallest element?" (0-indexed)
+    // The result is a pair, so we take .first
+    cout << "Index 2 value: " << oms.find_by_order(2)->first << endl; // Output: 5
+
+    // --- 3. ERASING (Safe!) ---
+    // To erase *one* instance of 5:
+    // Find the first instance of 5 using lower_bound with a minimal secondary key.
+    auto it = oms.lower_bound({5, -1});
+
+    if (it != oms.end() && it->first == 5)
+    {
+        oms.erase(it); // Safely erases just one "5"
+        cout << "Erased one 5." << endl;
     }
 
-    vector<vector<int>> dp(n + 1, vector<int>(17, 0));
-    vector<int> level(n + 1, 0);
-    dfs(1, 0, adj, dp, level);
+    // --- 4. Upper Bound / Lower Bound ---
+    // Standard lower_bound behavior (first element >= 5)
+    auto lb = oms.lower_bound({5, -1});
+    cout << "Lower Bound 5: " << lb->first << endl; // Output: 5
 
-    // making n queries to find the lca of a and b
-    int q;
-    cin >> q;
-    while (q--)
-    {
-        int a, b;
-        cin >> a >> b;
-        if (level[a] > level[b])
-        {
-            swap(a, b);
-        }
-
-        // doing step 1 making then so that both of them come at same level
-        //  a is at lesser level
-
-        int differenceInLevel = level[b] - level[a];
-        b = getKpar(b, differenceInLevel, dp);
-        if (a == b)
-        {
-            cout << a << endl;
-            continue;
-        }
-        // step 2
-        for (int i = 16; i >= 0; i--)
-        {
-            if (dp[a][i] != dp[b][i])
-            {
-                a = dp[a][i];
-                b = dp[b][i];
-            }
-        }
-        cout << dp[a][0] << endl;
-    }
+    // Standard upper_bound behavior (first element > 5)
+    // We search for something greater than any possible {5, time}, so {5, infinity}
+    auto ub = oms.lower_bound({5, 2e9});
+    cout << "Upper Bound 5: " << ub->first << endl; // Output: 10
 }
-int main()
+signed main()
 {
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);

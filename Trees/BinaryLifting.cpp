@@ -242,8 +242,27 @@ public:
 /*-------------------------DSU ends-------------------------*/
 
 /*-------------------------SOLUTION-------------------------*/
-
 // filling the binary lifting dp/parent table (parent are store in the power of 2)
+
+/*
+    - dp[node][i] = stores the ancestor of node at the distance of 2^i
+    - dp[node][i] = dp[dp[node][i-1]][i-1]
+
+    here dp[node][i-1] is the parent of dp[node][i]
+    and we are finding it's parent which is at distance 2^(i-1)
+
+
+    2^i = 2^(i-1) + 2^(i-1)
+
+    so to find dp[node][i]
+    we move to 2^(i-1) parent and then find the ancestor it which is at distance 2^(i-1)
+
+
+    As we are moving from parent to child, parents ancestors are already calculated
+
+    K = ceil(log2(Max Nodes)) = here it is 16
+*/
+
 void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp)
 {
     // 0 => 2^0 i.e., first parent
@@ -251,7 +270,10 @@ void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp)
 
     for (int i = 1; i <= 16; i++)
     { // 16 can be change basically log(N) => N max depth
-        dp[node][i] = dp[dp[node][i - 1]][i - 1];
+        if (dp[node][i - 1] != -1)
+            dp[node][i] = dp[dp[node][i - 1]][i - 1];
+        else
+            dp[node][i] = -1;
     }
 
     for (auto it : adj[node])
@@ -292,6 +314,8 @@ void solve()
             if ((k >> i) & 1)
             {
                 node = dp[node][i];
+                if (node == -1)
+                    break;
             }
         }
         cout << node << endl;
