@@ -253,12 +253,12 @@ public:
 
 // filling the binary lifting dp/parent table (parent are store in the power of 2)
 // explanation of the code is in the dfs function is in binaryLifting.cpp template
-void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp, vi &level, int l = 0)
+void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp, vi &level, int sz = 16, int l = 0)
 {
     // 0 => 2^0 i.e., first parent
     dp[node][0] = par;
 
-    for (int i = 1; i <= 16; i++)
+    for (int i = 1; i <= sz; i++)
     { // 16 can be change basically log(N) => N max depth
         if (dp[node][i - 1] != -1)
             dp[node][i] = dp[dp[node][i - 1]][i - 1];
@@ -272,14 +272,14 @@ void dfs(int node, int par, vector<vector<int>> &adj, vector<vector<int>> &dp, v
     {
         if (it != par)
         {
-            dfs(it, node, adj, dp, level, l + 1);
+            dfs(it, node, adj, dp, level, l + 1, sz);
         }
     }
 }
 
-int getKpar(int node, int k, vvi &dp)
+int getKpar(int node, int k, vvi &dp, int sz = 16)
 {
-    for (int i = 16; i >= 0; i--)
+    for (int i = sz; i >= 0; i--)
     {
         if ((k >> i) & 1)
         {
@@ -290,6 +290,34 @@ int getKpar(int node, int k, vvi &dp)
     }
 
     return node;
+}
+
+int getAncestor(int a, int b, vvi &dp, vi &level, int sz = 16)
+{
+    // STEP: 1
+    //   making so that a is closer to root
+    if (level[a] > level[b])
+        swap(a, b);
+
+    // doing this so that both of them come at same level
+    int diff = level[b] - level[a];
+    b = getKpar(b, diff, dp);
+
+    if (a == b)
+        return a;
+
+    // STEP: 2
+    // moving up untill we get equal parent
+    for (int i = sz; i >= 0; i--)
+    {
+        if (dp[a][i] != dp[b][i])
+        {
+            a = dp[a][i];
+            b = dp[b][i];
+        }
+    }
+
+    return dp[a][0];
 }
 
 void solve()
@@ -306,9 +334,12 @@ void solve()
         adj[v].pb(u);
     }
 
-    vector<vector<int>> dp(n + 1, vector<int>(17, 0));
+    // using binary lifting
+    int sz = log2(n) + 1;
+
+    vector<vector<int>> dp(n + 1, vector<int>(sz, 0));
     vector<int> level(n + 1, 0);
-    dfs(1, 0, adj, dp, level);
+    dfs(1, 0, adj, dp, level, sz);
 
     // making n queries to find the lca of a and b
     int q;
@@ -317,31 +348,8 @@ void solve()
     {
         int a, b;
         cin >> a >> b;
-        if (level[a] > level[b])
-        {
-            swap(a, b);
-        }
-
-        // doing step 1 making then so that both of them come at same level
-        //  a is at lesser level
-
-        int differenceInLevel = level[b] - level[a];
-        b = getKpar(b, differenceInLevel, dp);
-        if (a == b)
-        {
-            cout << a << endl;
-            continue;
-        }
-        // step 2
-        for (int i = 16; i >= 0; i--)
-        {
-            if (dp[a][i] != dp[b][i])
-            {
-                a = dp[a][i];
-                b = dp[b][i];
-            }
-        }
-        cout << dp[a][0] << endl;
+        int lca = getAncestor(a, b, dp, level, sz);
+        cout << lca << endl;
     }
 }
 int main()
